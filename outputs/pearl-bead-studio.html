@@ -1,0 +1,1011 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NEON BEAD // 离线拼豆图纸工作台</title>
+  <style>
+    :root {
+      --bg: #111315;
+      --bg-deep: #0b0d0f;
+      --surface: #191c20;
+      --surface-2: #20242a;
+      --surface-3: #282d34;
+      --line: #343a42;
+      --line-soft: #252a30;
+      --text: #f2f4f6;
+      --muted: #8d959e;
+      --muted-2: #606871;
+      --orange: #ff7a1a;
+      --orange-hot: #ff9d52;
+      --orange-dark: #a84910;
+      --green: #8ce0a6;
+      --red: #ff7668;
+      --cyan: #65d5df;
+      --cell: 16px;
+      --radius: 5px;
+      --font: "SFMono-Regular", "Roboto Mono", "Menlo", "Microsoft YaHei", monospace;
+      --ui-font: "SF Pro Display", "Inter", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg-deep); color: var(--text); }
+    body { font-family: var(--ui-font); overflow: hidden; }
+    button, input, select { font: inherit; }
+    button { color: inherit; }
+    ::selection { background: rgba(255, 122, 26, .34); color: #fff; }
+
+    .app-shell {
+      height: 100vh;
+      min-width: 960px;
+      display: grid;
+      grid-template-rows: 64px 1fr 30px;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(255, 122, 26, .08), transparent 30%),
+        var(--bg-deep);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      padding: 0 18px;
+      background: rgba(22, 25, 28, .97);
+      border-bottom: 1px solid var(--line);
+      box-shadow: 0 8px 24px rgba(0,0,0,.22);
+      position: relative;
+      z-index: 3;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 192px;
+      gap: 10px;
+      padding-right: 18px;
+      border-right: 1px solid var(--line);
+    }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      background: var(--orange);
+      color: #17110b;
+      font-family: var(--font);
+      font-size: 17px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px rgba(255, 157, 82, .3), 0 0 22px rgba(255, 122, 26, .18);
+    }
+    .brand-copy { min-width: 0; }
+    .brand-title { margin: 0; font-family: var(--font); font-size: 13px; letter-spacing: 1px; font-weight: 800; white-space: nowrap; }
+    .brand-subtitle { margin-top: 3px; color: var(--muted); font: 10px var(--font); letter-spacing: .55px; white-space: nowrap; }
+
+    .topbar-actions, .history-actions, .view-actions { display: flex; align-items: center; gap: 6px; }
+    .topbar-actions { flex: 1; }
+    .topbar-actions .btn-text { margin-left: auto; }
+    .btn, .icon-btn, .tool-btn, .preset-btn, .swatch, .chip-btn {
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color .15s ease, background .15s ease, color .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .btn:hover, .icon-btn:hover, .tool-btn:hover, .preset-btn:hover, .chip-btn:hover { border-color: var(--orange); background: #2b2621; color: var(--orange-hot); }
+    .btn:active, .icon-btn:active, .tool-btn:active, .preset-btn:active, .chip-btn:active { transform: translateY(1px); }
+    .btn:focus-visible, .icon-btn:focus-visible, .tool-btn:focus-visible, .preset-btn:focus-visible, .chip-btn:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--orange); outline-offset: 1px; }
+    .btn { height: 32px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
+    .btn-primary { border-color: var(--orange); background: var(--orange); color: #1c120a; font-weight: 800; }
+    .btn-primary:hover { color: #1c120a; background: var(--orange-hot); box-shadow: 0 0 20px rgba(255, 122, 26, .2); }
+    .btn-quiet { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-quiet:hover { background: var(--surface-2); border-color: var(--line); color: var(--text); }
+    .icon-btn { width: 32px; height: 32px; display: inline-grid; place-items: center; padding: 0; color: var(--muted); }
+    .icon-btn[disabled] { opacity: .35; cursor: not-allowed; }
+    .icon-btn[disabled]:hover { border-color: var(--line); background: var(--surface-2); color: var(--muted); }
+    .icon { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .icon-fill { fill: currentColor; stroke: none; }
+    .project-status { display: flex; align-items: center; gap: 7px; color: var(--muted); font: 10px var(--font); white-space: nowrap; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px rgba(140,224,166,.55); }
+    .status-dot.dirty { background: var(--orange); box-shadow: 0 0 10px rgba(255,122,26,.55); }
+
+    .workspace { min-height: 0; display: grid; grid-template-columns: 268px minmax(440px, 1fr) 300px; overflow: hidden; }
+    .panel { min-width: 0; background: var(--surface); overflow: hidden; display: flex; flex-direction: column; }
+    .panel-left { border-right: 1px solid var(--line); }
+    .panel-right { border-left: 1px solid var(--line); }
+    .panel-scroll { min-height: 0; flex: 1; overflow: auto; padding: 14px 14px 22px; }
+    .panel-scroll::-webkit-scrollbar, .canvas-stage::-webkit-scrollbar { width: 8px; height: 8px; }
+    .panel-scroll::-webkit-scrollbar-track, .canvas-stage::-webkit-scrollbar-track { background: transparent; }
+    .panel-scroll::-webkit-scrollbar-thumb, .canvas-stage::-webkit-scrollbar-thumb { background: #3b424b; border-radius: 8px; }
+    .panel-scroll::-webkit-scrollbar-thumb:hover, .canvas-stage::-webkit-scrollbar-thumb:hover { background: var(--orange-dark); }
+    .panel-heading { display: flex; align-items: center; justify-content: space-between; min-height: 38px; padding: 0 14px; border-bottom: 1px solid var(--line-soft); background: #17191c; }
+    .panel-heading h2 { margin: 0; font: 11px var(--font); letter-spacing: 1.3px; color: var(--text); text-transform: uppercase; }
+    .panel-heading span { color: var(--muted-2); font: 10px var(--font); }
+    .section { padding: 0 0 17px; margin-bottom: 15px; border-bottom: 1px solid var(--line-soft); }
+    .section:last-child { border-bottom: 0; margin-bottom: 0; }
+    .section-title { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; color: #c6cbd0; font-size: 11px; font-weight: 800; letter-spacing: .35px; }
+    .section-title::before { content: ""; width: 3px; height: 12px; display: block; background: var(--orange); border-radius: 1px; }
+    .section-title small { margin-left: auto; color: var(--muted-2); font: 10px var(--font); }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field label { display: block; margin: 0 0 5px; color: var(--muted); font-size: 10px; }
+    .field input, .field select {
+      width: 100%; height: 31px; border: 1px solid var(--line); border-radius: 4px; padding: 0 8px; background: var(--bg-deep); color: var(--text); font: 12px var(--font); min-width: 0;
+    }
+    .field input:focus, .field select:focus { border-color: var(--orange); }
+    .input-suffix { position: relative; }
+    .input-suffix input { padding-right: 30px; }
+    .input-suffix span { position: absolute; top: 8px; right: 8px; color: var(--muted-2); font: 10px var(--font); }
+    .preset-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .preset-btn { height: 29px; color: var(--muted); font: 10px var(--font); }
+    .preset-btn.active { color: var(--orange-hot); border-color: var(--orange-dark); background: rgba(255,122,26,.09); }
+    .control-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 30px; color: #c8cdd1; font-size: 11px; }
+    .control-row + .control-row { margin-top: 7px; }
+    .switch { width: 31px; height: 17px; padding: 2px; border: 1px solid #49505a; border-radius: 10px; background: #262b31; cursor: pointer; transition: .15s ease; }
+    .switch::after { content: ""; display: block; width: 11px; height: 11px; border-radius: 50%; background: #87909a; transition: .15s ease; }
+    .switch.on { border-color: var(--orange-dark); background: rgba(255,122,26,.35); }
+    .switch.on::after { transform: translateX(12px); background: var(--orange); box-shadow: 0 0 9px rgba(255,122,26,.55); }
+    .range-wrap { display: grid; grid-template-columns: 1fr 42px; align-items: center; gap: 8px; }
+    input[type="range"] { accent-color: var(--orange); width: 100%; }
+    .range-value { color: var(--orange-hot); font: 10px var(--font); text-align: right; }
+    .tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tool-btn { height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); font-size: 10px; }
+    .tool-btn .icon { width: 18px; height: 18px; }
+    .tool-btn.active { border-color: var(--orange); background: rgba(255,122,26,.12); color: var(--orange-hot); box-shadow: inset 0 -2px 0 var(--orange); }
+    .transform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .transform-grid .btn { justify-content: center; padding: 0 6px; font-size: 10px; }
+    .hint { margin-top: 9px; color: var(--muted-2); font: 10px/1.55 var(--font); }
+    .file-drop { min-height: 80px; border: 1px dashed #4a515a; border-radius: 4px; display: grid; place-items: center; padding: 12px; text-align: center; color: var(--muted); font-size: 11px; cursor: pointer; background: rgba(0,0,0,.12); transition: .15s ease; }
+    .file-drop:hover, .file-drop.dragover { border-color: var(--orange); color: var(--orange-hot); background: rgba(255,122,26,.06); }
+    .file-drop strong { display: block; color: #dfe3e6; font-size: 11px; margin-bottom: 4px; }
+    .file-drop input { display: none; }
+
+    .canvas-panel { min-width: 0; min-height: 0; display: grid; grid-template-rows: 40px 1fr auto; background: #101214; }
+    .canvas-toolbar { display: flex; align-items: center; gap: 8px; padding: 0 14px; border-bottom: 1px solid var(--line); background: #15181b; }
+    .canvas-toolbar .toolbar-label { color: var(--muted); font: 10px var(--font); letter-spacing: .5px; }
+    .canvas-toolbar .spacer { flex: 1; }
+    .segmented { display: flex; padding: 2px; border: 1px solid var(--line); border-radius: 5px; background: var(--bg-deep); }
+    .segment { border: 0; border-radius: 3px; padding: 5px 9px; background: transparent; color: var(--muted); cursor: pointer; font: 10px var(--font); }
+    .segment:hover { color: var(--text); }
+    .segment.active { background: var(--surface-3); color: var(--orange-hot); }
+    .canvas-stage {
+      position: relative;
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      place-items: center;
+      padding: 42px 52px 46px;
+      background:
+        linear-gradient(rgba(255,255,255,.022) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.022) 1px, transparent 1px),
+        #101214;
+      background-size: 24px 24px;
+    }
+    .canvas-workspace { position: relative; display: grid; place-items: center; width: max-content; height: max-content; flex: none; }
+    .ruler-x, .ruler-y { position: absolute; color: #8a929b; font: 9px var(--font); pointer-events: none; user-select: none; }
+    .ruler-x { left: 0; top: -27px; height: 24px; display: flex; align-items: end; }
+    .ruler-y { top: 0; left: -37px; width: 32px; display: flex; flex-direction: column; align-items: end; }
+    .ruler-x span, .ruler-y span { position: absolute; display: block; }
+    .ruler-x span { bottom: 1px; transform: translateX(-50%); }
+    .ruler-y span { right: 0; transform: translateY(-50%); }
+    .ruler-x::after, .ruler-y::after { content: ""; position: absolute; opacity: .46; }
+    .ruler-x::after { left: 0; right: 0; bottom: 0; border-bottom: 1px solid var(--line); height: 5px; background: repeating-linear-gradient(90deg, transparent 0, transparent 15px, #616a74 15px, #616a74 16px); }
+    .ruler-y::after { top: 0; bottom: 0; right: 0; width: 5px; border-right: 1px solid var(--line); background: repeating-linear-gradient(0deg, transparent 0, transparent 15px, #616a74 15px, #616a74 16px); }
+    .canvas-stack { position: relative; background: #fff; box-shadow: 0 16px 48px rgba(0,0,0,.58), 0 0 0 1px #555b63; }
+    .canvas-stack canvas { display: block; image-rendering: pixelated; }
+    #referenceCanvas, #patternCanvas { position: absolute; inset: 0; }
+    #patternCanvas { cursor: crosshair; }
+    .canvas-meta { position: absolute; left: 10px; bottom: 9px; display: flex; gap: 8px; align-items: center; color: var(--muted-2); font: 10px var(--font); pointer-events: none; }
+    .canvas-meta strong { color: var(--orange-hot); font-weight: 500; }
+    .empty-overlay { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; color: rgba(45, 50, 56, .34); font: 11px var(--font); }
+    .legend { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-height: 50px; padding: 8px 14px 10px; border-top: 1px solid var(--line); background: #15181b; }
+    .legend-title { color: var(--muted); font: 10px var(--font); margin-right: 3px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; color: #c4cbd0; font: 10px var(--font); }
+    .legend-dot { width: 12px; height: 12px; border-radius: 2px; border: 1px solid rgba(255,255,255,.34); }
+
+    .color-actions { display: flex; gap: 6px; align-items: center; margin-bottom: 10px; }
+    .current-color { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; padding: 7px; border: 1px solid var(--line); background: var(--bg-deep); border-radius: 4px; }
+    .current-color-swatch { width: 24px; height: 24px; border-radius: 3px; border: 1px solid rgba(255,255,255,.38); flex: none; }
+    .current-color-copy { min-width: 0; }
+    .current-color-copy strong { display: block; font: 11px var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .current-color-copy span { display: block; margin-top: 2px; color: var(--muted); font: 9px var(--font); }
+    .palette-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+    .swatch { aspect-ratio: 1; position: relative; min-width: 0; padding: 0; border-color: rgba(255,255,255,.12); overflow: visible; }
+    .swatch::before { content: ""; position: absolute; inset: 2px; border-radius: 2px; background: var(--swatch-color); box-shadow: inset 0 0 0 1px rgba(0,0,0,.14); }
+    .swatch:hover { z-index: 1; transform: scale(1.08); border-color: var(--orange-hot); }
+    .swatch.active { border-color: var(--orange); box-shadow: 0 0 0 1px var(--orange), 0 0 12px rgba(255,122,26,.32); }
+    .swatch.active::after { content: ""; position: absolute; right: -2px; top: -4px; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); border: 1px solid var(--surface); }
+    .swatch[title] { cursor: pointer; }
+    .palette-note { margin-top: 8px; color: var(--muted-2); font: 9px/1.45 var(--font); }
+    .usage-head { display: grid; grid-template-columns: 1fr 48px 51px; gap: 8px; color: var(--muted-2); font: 9px var(--font); padding: 0 5px 7px; border-bottom: 1px solid var(--line-soft); }
+    .usage-list { display: flex; flex-direction: column; gap: 3px; margin-top: 5px; }
+    .usage-row { display: grid; grid-template-columns: 1fr 48px 51px; gap: 8px; align-items: center; min-height: 34px; padding: 4px 5px; border-radius: 3px; font: 10px var(--font); }
+    .usage-row:hover { background: var(--surface-2); }
+    .usage-name { display: flex; align-items: center; min-width: 0; gap: 7px; }
+    .usage-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .usage-color { width: 19px; height: 19px; flex: none; border-radius: 3px; border: 1px solid rgba(255,255,255,.3); }
+    .usage-count { color: #e6e9ec; text-align: right; }
+    .usage-pct { color: var(--muted); text-align: right; }
+    .usage-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: 12px; padding: 12px 5px 0; border-top: 1px solid var(--line); }
+    .usage-total span { color: var(--muted); font-size: 10px; }
+    .usage-total strong { color: var(--orange-hot); font: 16px var(--font); }
+    .tip-box { display: flex; gap: 8px; padding: 10px; border: 1px solid rgba(101,213,223,.22); border-left: 2px solid var(--cyan); background: rgba(101,213,223,.045); color: #a8c7cb; font: 10px/1.5 var(--font); }
+    .tip-box .icon { color: var(--cyan); flex: none; margin-top: 1px; }
+    .footerbar { display: flex; align-items: center; justify-content: space-between; padding: 0 14px; border-top: 1px solid var(--line); background: #17191c; color: var(--muted-2); font: 9px var(--font); }
+    .footerbar strong { color: var(--muted); font-weight: 500; }
+    .toast { position: fixed; left: 50%; bottom: 48px; z-index: 20; transform: translate(-50%, 12px); padding: 10px 14px; border: 1px solid var(--orange-dark); border-radius: 4px; color: #ffe1c9; background: #2a1c13; box-shadow: 0 8px 24px rgba(0,0,0,.4); font: 11px var(--font); opacity: 0; pointer-events: none; transition: .2s ease; }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 238px minmax(380px, 1fr) 268px; }
+      .brand { min-width: 168px; }
+      .topbar { gap: 12px; padding: 0 12px; }
+      .btn { padding: 0 8px; }
+    }
+    @media (max-width: 900px) {
+      body { overflow: auto; }
+      .app-shell { min-width: 0; height: auto; min-height: 100vh; grid-template-rows: auto auto 30px; }
+      .topbar { min-height: 64px; flex-wrap: wrap; padding: 10px 12px; }
+      .topbar-actions { flex-basis: 100%; order: 2; overflow-x: auto; padding-bottom: 2px; }
+      .topbar-actions .btn-text { margin-left: 0; }
+      .workspace { grid-template-columns: 1fr; overflow: visible; }
+      .panel { max-height: none; border: 0; border-bottom: 1px solid var(--line); }
+      .panel-left, .panel-right { border-right: 0; border-left: 0; }
+      .panel-scroll { max-height: none; }
+      .canvas-panel { min-height: 620px; order: -1; }
+      .canvas-stage { min-height: 500px; }
+      .panel-left .panel-scroll, .panel-right .panel-scroll { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .panel-left .section, .panel-right .section { min-width: 0; margin-bottom: 0; }
+      .panel-left .section:last-child, .panel-right .section:last-child { grid-column: 1 / -1; }
+    }
+
+    @media print {
+      body { background: #fff; overflow: visible; }
+      .app-shell { display: block; min-width: 0; height: auto; }
+      .topbar, .panel, .canvas-toolbar, .canvas-meta, .footerbar, .legend { display: none !important; }
+      .canvas-panel, .canvas-stage { display: block; background: #fff; min-height: 0; padding: 30px; }
+      .canvas-workspace { margin: 0 auto; }
+      .canvas-stack { box-shadow: none; }
+      #referenceCanvas { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">yzl</div>
+        <div class="brand-copy">
+          <h1 class="brand-title">ONLY FOR 余芷琳</h1>
+          <div class="brand-subtitle">OFFLINE PIXEL WORKBENCH // V1.0</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" id="newBtn" title="清空并新建图纸"><svg class="icon icon-fill" viewBox="0 0 24 24"><path d="M11 4h2v7h7v2h-7v7h-2v-7H4v-2h7z"/></svg>新建</button>
+        <button class="btn" id="openJsonBtn" title="读取 JSON 工程文件"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H10l2 2h5.5A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5z"/><path d="M4 8h16"/></svg>打开工程</button>
+        <button class="btn" id="saveJsonBtn" title="保存当前工程为 JSON"><svg class="icon" viewBox="0 0 24 24"><path d="M5 3h12l2 2v16H5z"/><path d="M8 3v6h8V3M8 21v-6h8v6"/></svg>保存工程</button>
+        <button class="btn btn-text" id="printBtn" title="打开浏览器打印预览"><svg class="icon" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/></svg>打印预览</button>
+        <div class="history-actions">
+          <button class="icon-btn" id="undoBtn" title="撤销 Ctrl/Cmd + Z"><svg class="icon" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 6 6"/></svg></button>
+          <button class="icon-btn" id="redoBtn" title="重做 Ctrl/Cmd + Shift + Z"><svg class="icon" viewBox="0 0 24 24"><path d="m15 7 5 5-5 5"/><path d="M20 12H10a6 6 0 0 0-6 6"/></svg></button>
+        </div>
+        <div class="project-status"><span class="status-dot" id="dirtyDot"></span><span id="projectStatus">已保存到本机</span></div>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="panel panel-left" aria-label="图纸控制面板">
+        <div class="panel-heading"><h2>图纸控制</h2><span id="dimensionReadout">60 × 60</span></div>
+        <div class="panel-scroll">
+          <section class="section">
+            <div class="section-title">画布设置 <small>CANVAS</small></div>
+            <div class="field-grid">
+              <div class="field"><label for="widthInput">横向格数</label><input id="widthInput" type="number" min="4" max="100" value="60" inputmode="numeric"></div>
+              <div class="field"><label for="heightInput">纵向格数</label><input id="heightInput" type="number" min="4" max="100" value="60" inputmode="numeric"></div>
+            </div>
+            <div class="preset-grid" style="margin-top:9px">
+              <button class="preset-btn" data-size="16">16 × 16</button><button class="preset-btn" data-size="24">24 × 24</button><button class="preset-btn" data-size="32">32 × 32</button>
+              <button class="preset-btn" data-size="40">40 × 40</button><button class="preset-btn" data-size="48">48 × 48</button><button class="preset-btn active" data-size="60">60 × 60</button>
+            </div>
+            <div class="hint">修改尺寸会清空当前图纸，并生成新的空白画布。</div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">视图开关 <small>VIEW</small></div>
+            <div class="control-row"><span>网格线</span><button class="switch on" data-toggle="grid" aria-label="切换网格线"></button></div>
+            <div class="control-row"><span>坐标标尺</span><button class="switch on" data-toggle="ruler" aria-label="切换坐标标尺"></button></div>
+            <div class="control-row"><span>色块内色号</span><button class="switch on" data-toggle="labels" aria-label="切换色号"></button></div>
+            <div class="control-row"><span>参考底图</span><button class="switch on" data-toggle="reference" aria-label="切换参考底图"></button></div>
+            <div class="control-row"><span>预览模式</span><div class="segmented"><button class="segment active" data-mode="board">色板纸</button><button class="segment" data-mode="bead">圆形豆</button></div></div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">绘图工具 <small>TOOLS</small></div>
+            <div class="tool-grid">
+              <button class="tool-btn active" data-tool="brush" title="画笔"><svg class="icon" viewBox="0 0 24 24"><path d="m4 20 4.2-1 9.9-9.9a2.3 2.3 0 0 0-3.2-3.2L5 15.8z"/><path d="m13.5 7.5 3 3"/><path d="M4 20h5"/></svg>画笔</button>
+              <button class="tool-btn" data-tool="eraser" title="橡皮擦"><svg class="icon" viewBox="0 0 24 24"><path d="m7 16-3-3 8.6-8.6a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L11 18z"/><path d="M4 20h16M8.5 14.5l3.5 3.5"/></svg>橡皮</button>
+              <button class="tool-btn" data-tool="picker" title="取色器"><svg class="icon" viewBox="0 0 24 24"><path d="m14 5 5 5M5 19l3.6-1 9.6-9.6a2.1 2.1 0 0 0-3-3L5.6 15z"/><path d="M4 20h5"/><circle cx="17.5" cy="6.5" r="1.2"/></svg>取色</button>
+            </div>
+            <div class="hint">鼠标按住画布拖动，可连续绘制或擦除。</div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">图案变换 <small>TRANSFORM</small></div>
+            <div class="transform-grid">
+              <button class="btn" data-transform="mirrorX"><svg class="icon" viewBox="0 0 24 24"><path d="M12 4v16M8 7 5 10l3 3M16 17l3-3-3-3"/><path d="M3 4h5M16 20h5"/></svg>水平镜像</button>
+              <button class="btn" data-transform="mirrorY"><svg class="icon" viewBox="0 0 24 24"><path d="M4 12h16M7 8l3-3 3 3M17 16l-3 3-3-3"/><path d="M4 3v5M20 16v5"/></svg>垂直镜像</button>
+              <button class="btn" data-transform="rotate"><svg class="icon" viewBox="0 0 24 24"><path d="M5 9a7 7 0 1 1 2 8"/><path d="M5 4v5h5"/></svg>旋转 90°</button>
+              <button class="btn btn-quiet" id="clearBtn"><svg class="icon" viewBox="0 0 24 24"><path d="M5 7h14M10 11v6M14 11v6M7 7l1 14h8l1-14M9 7l1-3h4l1 3"/></svg>清空图纸</button>
+            </div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">参考底图 <small>REFERENCE</small></div>
+            <label class="file-drop" id="fileDrop"><input id="referenceInput" type="file" accept="image/*"><div><strong>点击或拖入本地图片</strong>仅在本机处理，不会上传</div></label>
+            <div class="range-wrap" style="margin-top:11px"><input id="opacityInput" type="range" min="0" max="100" value="42"><span class="range-value" id="opacityValue">42%</span></div>
+            <button class="btn btn-quiet" id="removeReferenceBtn" style="width:100%; justify-content:center; margin-top:7px; height:28px; font-size:10px">移除参考底图</button>
+          </section>
+
+          <section class="section">
+            <div class="section-title">图片转图纸 <small>PIXELIZE</small></div>
+            <div class="field"><label for="maxColorsInput">最大用色数量</label><div class="input-suffix"><input id="maxColorsInput" type="number" min="2" max="32" value="12"><span>COLORS</span></div></div>
+            <button class="btn btn-primary" id="convertBtn" style="width:100%; justify-content:center; margin-top:9px"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="m7 15 3-3 2 2 3-4 3 5"/><circle cx="9" cy="9" r="1.2"/></svg>一键转换为拼豆图纸</button>
+            <div class="hint">采用 RGB 欧式距离匹配，并压制大面积近白色误判。</div>
+          </section>
+        </div>
+      </aside>
+
+      <section class="canvas-panel" aria-label="画布预览区">
+        <div class="canvas-toolbar">
+          <span class="toolbar-label">PREVIEW / <strong id="toolbarDimension">60×60</strong></span>
+          <div class="spacer"></div>
+          <div class="segmented"><button class="segment active" data-zoom="1">100%</button><button class="segment" data-zoom="1.5">150%</button><button class="segment" data-zoom="2">200%</button></div>
+          <button class="icon-btn" id="fitBtn" title="适合窗口"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5"/><path d="M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6"/></svg></button>
+          <button class="icon-btn" id="exportBtn" title="导出白底 PNG"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></button>
+        </div>
+        <div class="canvas-stage" id="canvasStage">
+          <div class="canvas-workspace" id="canvasWorkspace">
+            <div class="ruler-x" id="rulerX"></div>
+            <div class="ruler-y" id="rulerY"></div>
+            <div class="canvas-stack" id="canvasStack">
+              <canvas id="referenceCanvas"></canvas>
+              <canvas id="patternCanvas"></canvas>
+              <div class="empty-overlay" id="emptyOverlay">READY / 选择右侧色板开始绘制</div>
+            </div>
+          </div>
+          <div class="canvas-meta"><strong id="cursorReadout">-- , --</strong><span>坐标</span><span>|</span><span>单元格 16px</span></div>
+        </div>
+        <div class="legend" id="legend"><span class="legend-title">使用颜色图例</span><span class="legend-item" id="legendEmpty">尚未绘制颜色</span></div>
+      </section>
+
+      <aside class="panel panel-right" aria-label="色板与用料统计面板">
+        <div class="panel-heading"><h2>色板 & 用料</h2><span id="paletteCount">32 COLORS</span></div>
+        <div class="panel-scroll">
+          <section class="section">
+            <div class="section-title">当前绘制色 <small>ACTIVE</small></div>
+            <div class="color-actions">
+              <div class="current-color"><span class="current-color-swatch" id="currentColorSwatch"></span><div class="current-color-copy"><strong id="currentColorName">炭黑 / B01</strong><span id="currentColorHex">#20252B</span></div></div>
+              <button class="icon-btn" id="randomColorBtn" title="随机选择颜色"><svg class="icon" viewBox="0 0 24 24"><path d="M4 7h3c3 0 4 4 6 4h4"/><path d="m15 8 2-2 2 2M4 17h3c3 0 4-4 6-4h4"/><path d="m15 16 2 2 2-2"/></svg></button>
+            </div>
+            <div class="palette-grid" id="paletteGrid"></div>
+            <div class="palette-note">点击色块切换绘制颜色。色号与颜色名随图纸一起保存。</div>
+          </section>
+
+          <section class="section">
+            <div class="section-title">用料统计 <small>USAGE</small></div>
+            <div class="usage-head"><span>颜色</span><span style="text-align:right">数量</span><span style="text-align:right">占比</span></div>
+            <div class="usage-list" id="usageList"></div>
+            <div class="usage-total"><span>总豆子数量</span><strong id="totalCount">0</strong></div>
+          </section>
+
+          <section class="section">
+            <div class="tip-box"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7h.01"/></svg><span>导出 PNG 会自动生成白底图纸；坐标标尺是否显示跟随左侧开关。</span></div>
+          </section>
+        </div>
+      </aside>
+    </main>
+    <footer class="footerbar"><span>LOCAL ONLY <strong>// 所有数据仅在浏览器本地处理</strong></span><span id="footerStats">0 CELLS / 0 COLORS</span></footer>
+  </div>
+
+  <input id="jsonInput" type="file" accept="application/json,.json" hidden>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const PALETTE = [
+        { id: "B01", name: "炭黑", hex: "#20252B" }, { id: "B02", name: "石墨", hex: "#4B5159" },
+        { id: "W01", name: "奶油白", hex: "#F5F1E8" }, { id: "W02", name: "纯白", hex: "#FFFFFF" },
+        { id: "G01", name: "水泥灰", hex: "#9AA0A5" }, { id: "G02", name: "银灰", hex: "#D4D7D9" },
+        { id: "R01", name: "正红", hex: "#ED3B32" }, { id: "R02", name: "砖红", hex: "#AD322D" },
+        { id: "O01", name: "活力橙", hex: "#FF7A1A" }, { id: "O02", name: "珊瑚橙", hex: "#F27D55" },
+        { id: "Y01", name: "柠檬黄", hex: "#FFE34D" }, { id: "Y02", name: "暖黄", hex: "#E9B83F" },
+        { id: "P01", name: "莓果粉", hex: "#E54879" }, { id: "P02", name: "珊瑚粉", hex: "#F49391" },
+        { id: "V01", name: "葡萄紫", hex: "#864CC7" }, { id: "V02", name: "薰衣草", hex: "#B7A2E0" },
+        { id: "U01", name: "电光蓝", hex: "#3868F4" }, { id: "U02", name: "雾霾蓝", hex: "#7B98C9" },
+        { id: "C01", name: "青蓝", hex: "#18B6C9" }, { id: "C02", name: "薄荷青", hex: "#75D8CB" },
+        { id: "T01", name: "森林绿", hex: "#25835E" }, { id: "T02", name: "草木绿", hex: "#6CC56D" },
+        { id: "K01", name: "橄榄绿", hex: "#939C44" }, { id: "K02", name: "鼠尾草", hex: "#B4C79B" },
+        { id: "N01", name: "咖啡棕", hex: "#77503C" }, { id: "N02", name: "奶茶棕", hex: "#C9976B" },
+        { id: "S01", name: "沙砾色", hex: "#D4B97F" }, { id: "S02", name: "麦芽色", hex: "#EDDA9A" },
+        { id: "M01", name: "深海蓝", hex: "#1C416D" }, { id: "M02", name: "海军蓝", hex: "#2F568C" },
+        { id: "L01", name: "荧光绿", hex: "#B4E93D" }, { id: "L02", name: "荧光青", hex: "#63E5CC" }
+      ];
+      const paletteMap = new Map(PALETTE.map(color => [color.id, color]));
+      const blank = () => Array.from({ length: state.height }, () => Array(state.width).fill(null));
+      const cloneGrid = grid => grid.map(row => row.slice());
+
+      const state = {
+        width: 60, height: 60, grid: [], currentColor: "B01", tool: "brush", mode: "board", zoom: 1,
+        gridLines: true, ruler: true, labels: true, referenceVisible: true, referenceOpacity: 42,
+        referenceImage: null, history: [], historyIndex: -1, isDirty: false, pointerDown: false, lastCell: null
+      };
+      state.grid = blank();
+
+      const $ = id => document.getElementById(id);
+      const refs = {
+        width: $("widthInput"), height: $("heightInput"), dimension: $("dimensionReadout"), toolbarDimension: $("toolbarDimension"),
+        pattern: $("patternCanvas"), reference: $("referenceCanvas"), stack: $("canvasStack"), workspace: $("canvasWorkspace"), stage: $("canvasStage"),
+        rulerX: $("rulerX"), rulerY: $("rulerY"), paletteGrid: $("paletteGrid"), usageList: $("usageList"), total: $("totalCount"),
+        legend: $("legend"), empty: $("emptyOverlay"), cursor: $("cursorReadout"), toast: $("toast"), footerStats: $("footerStats"),
+        status: $("projectStatus"), dirtyDot: $("dirtyDot"), opacity: $("opacityInput"), opacityValue: $("opacityValue"), maxColors: $("maxColorsInput"),
+        fileDrop: $("fileDrop"), referenceInput: $("referenceInput"), jsonInput: $("jsonInput"), currentSwatch: $("currentColorSwatch"),
+        currentName: $("currentColorName"), currentHex: $("currentColorHex")
+      };
+      const ctx = refs.pattern.getContext("2d");
+      const refCtx = refs.reference.getContext("2d");
+      const CELL = 16;
+      let toastTimer;
+
+      function iconSvg(name) {
+        const icons = {
+          check: '<svg class="icon" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>'
+        };
+        return icons[name] || "";
+      }
+
+      function showToast(message) {
+        refs.toast.textContent = message;
+        refs.toast.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => refs.toast.classList.remove("show"), 2200);
+      }
+
+      function snapshot() {
+        return { width: state.width, height: state.height, grid: cloneGrid(state.grid) };
+      }
+
+      function restoreSnapshot(item) {
+        state.width = item.width;
+        state.height = item.height;
+        state.grid = cloneGrid(item.grid);
+        refs.width.value = state.width;
+        refs.height.value = state.height;
+        renderAll();
+      }
+
+      function pushHistory() {
+        const next = snapshot();
+        const previous = state.history[state.historyIndex];
+        if (previous && JSON.stringify(previous) === JSON.stringify(next)) return;
+        state.history = state.history.slice(0, state.historyIndex + 1);
+        state.history.push(next);
+        if (state.history.length > 50) state.history.shift();
+        state.historyIndex = state.history.length - 1;
+        setDirty(true);
+        updateHistoryButtons();
+      }
+
+      function setDirty(dirty) {
+        state.isDirty = dirty;
+        refs.dirtyDot.classList.toggle("dirty", dirty);
+        refs.status.textContent = dirty ? "有未保存修改" : "已保存到本机";
+      }
+
+      function updateHistoryButtons() {
+        $("undoBtn").disabled = state.historyIndex <= 0;
+        $("redoBtn").disabled = state.historyIndex >= state.history.length - 1;
+      }
+
+      function setDimensions(width, height, shouldClear = true) {
+        const safeWidth = Math.max(4, Math.min(100, Math.round(Number(width) || 60)));
+        const safeHeight = Math.max(4, Math.min(100, Math.round(Number(height) || 60)));
+        state.width = safeWidth;
+        state.height = safeHeight;
+        state.grid = Array.from({ length: safeHeight }, () => Array(safeWidth).fill(null));
+        refs.width.value = safeWidth;
+        refs.height.value = safeHeight;
+        if (shouldClear) {
+          state.history = [];
+          state.historyIndex = -1;
+          pushHistory();
+        }
+        renderAll();
+      }
+
+      function resizeCanvas() {
+        const size = Math.max(4, Math.min(100, Math.round(Number(refs.width.value) || state.width))) * CELL;
+        const height = Math.max(4, Math.min(100, Math.round(Number(refs.height.value) || state.height))) * CELL;
+        [refs.pattern, refs.reference].forEach(canvas => {
+          canvas.width = size;
+          canvas.height = height;
+          canvas.style.width = `${size * state.zoom}px`;
+          canvas.style.height = `${height * state.zoom}px`;
+        });
+        refs.stack.style.width = `${size * state.zoom}px`;
+        refs.stack.style.height = `${height * state.zoom}px`;
+        refs.rulerX.style.width = `${size * state.zoom}px`;
+        refs.rulerY.style.height = `${height * state.zoom}px`;
+        drawRulers();
+        drawReference();
+      }
+
+      function drawRulers() {
+        refs.rulerX.innerHTML = "";
+        refs.rulerY.innerHTML = "";
+        if (!state.ruler) {
+          refs.rulerX.classList.add("hidden");
+          refs.rulerY.classList.add("hidden");
+          return;
+        }
+        refs.rulerX.classList.remove("hidden");
+        refs.rulerY.classList.remove("hidden");
+        const step = state.zoom * CELL;
+        for (let x = 0; x < state.width; x++) {
+          const label = document.createElement("span");
+          label.textContent = x + 1;
+          label.style.left = `${(x + .5) * step}px`;
+          refs.rulerX.appendChild(label);
+        }
+        for (let y = 0; y < state.height; y++) {
+          const label = document.createElement("span");
+          label.textContent = y + 1;
+          label.style.top = `${(y + .5) * step}px`;
+          refs.rulerY.appendChild(label);
+        }
+      }
+
+      function drawReference() {
+        refCtx.clearRect(0, 0, refs.reference.width, refs.reference.height);
+        if (!state.referenceImage || !state.referenceVisible) return;
+        refCtx.save();
+        refCtx.globalAlpha = state.referenceOpacity / 100;
+        const image = state.referenceImage;
+        const scale = Math.max(refs.reference.width / image.width, refs.reference.height / image.height);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        refCtx.drawImage(image, (refs.reference.width - width) / 2, (refs.reference.height - height) / 2, width, height);
+        refCtx.restore();
+      }
+
+      function drawPattern() {
+        const width = refs.pattern.width;
+        const height = refs.pattern.height;
+        ctx.clearRect(0, 0, width, height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        const boardMode = state.mode === "board";
+        for (let y = 0; y < state.height; y++) {
+          for (let x = 0; x < state.width; x++) {
+            const colorId = state.grid[y][x];
+            const color = colorId ? paletteMap.get(colorId) : null;
+            const px = x * CELL;
+            const py = y * CELL;
+            if (color) {
+              if (boardMode) {
+                ctx.fillStyle = color.hex;
+                ctx.fillRect(px, py, CELL, CELL);
+                if (state.labels && CELL >= 12) {
+                  ctx.fillStyle = contrastColor(color.hex);
+                  ctx.font = "700 7px SFMono-Regular, Menlo, monospace";
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+                  ctx.fillText(color.id, px + CELL / 2, py + CELL / 2 + .5);
+                }
+              } else {
+                ctx.fillStyle = "#fafafa";
+                ctx.fillRect(px, py, CELL, CELL);
+                ctx.beginPath();
+                ctx.arc(px + CELL / 2, py + CELL / 2, 6.3, 0, Math.PI * 2);
+                ctx.fillStyle = color.hex;
+                ctx.fill();
+                ctx.strokeStyle = "rgba(0,0,0,.28)";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(px + CELL / 2 - 1.8, py + CELL / 2 - 2, 1.55, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(255,255,255,.29)";
+                ctx.fill();
+              }
+            } else if (state.mode === "bead") {
+              ctx.fillStyle = "#fafafa";
+              ctx.fillRect(px, py, CELL, CELL);
+            }
+          }
+        }
+        if (state.gridLines) {
+          ctx.save();
+          ctx.strokeStyle = boardMode ? "rgba(37,42,48,.35)" : "rgba(60,67,73,.23)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let x = 0; x <= state.width; x++) { ctx.moveTo(x * CELL + .5, 0); ctx.lineTo(x * CELL + .5, height); }
+          for (let y = 0; y <= state.height; y++) { ctx.moveTo(0, y * CELL + .5); ctx.lineTo(width, y * CELL + .5); }
+          ctx.stroke();
+          ctx.restore();
+        }
+        const count = countFilled();
+        refs.empty.classList.toggle("hidden", count > 0);
+      }
+
+      function contrastColor(hex) {
+        const rgb = hexToRgb(hex);
+        const luminance = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+        return luminance > 165 ? "#1b1e21" : "#ffffff";
+      }
+
+      function hexToRgb(hex) {
+        const value = hex.replace("#", "");
+        return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16) };
+      }
+
+      function countFilled() {
+        return state.grid.reduce((sum, row) => sum + row.filter(Boolean).length, 0);
+      }
+
+      function updateInfo() {
+        const filled = countFilled();
+        const counts = new Map();
+        state.grid.flat().filter(Boolean).forEach(id => counts.set(id, (counts.get(id) || 0) + 1));
+        refs.dimension.textContent = `${state.width} × ${state.height}`;
+        refs.toolbarDimension.textContent = `${state.width}×${state.height}`;
+        refs.total.textContent = filled.toLocaleString("zh-CN");
+        refs.footerStats.textContent = `${filled} CELLS / ${counts.size} COLORS`;
+        refs.currentSwatch.style.background = paletteMap.get(state.currentColor).hex;
+        refs.currentName.textContent = `${paletteMap.get(state.currentColor).name} / ${state.currentColor}`;
+        refs.currentHex.textContent = paletteMap.get(state.currentColor).hex;
+        document.querySelectorAll(".preset-btn").forEach(button => button.classList.toggle("active", Number(button.dataset.size) === state.width && state.width === state.height));
+        renderUsage(counts, filled);
+        renderLegend(counts);
+      }
+
+      function renderUsage(counts, total) {
+        const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        refs.usageList.innerHTML = "";
+        if (!entries.length) {
+          refs.usageList.innerHTML = '<div style="padding:14px 5px;color:var(--muted-2);font:10px var(--font)">暂无用料记录</div>';
+          return;
+        }
+        entries.forEach(([id, count]) => {
+          const color = paletteMap.get(id);
+          const row = document.createElement("div");
+          row.className = "usage-row";
+          row.innerHTML = `<div class="usage-name"><span class="usage-color" style="background:${color.hex}"></span><span>${color.name} / ${id}</span></div><span class="usage-count">${count}</span><span class="usage-pct">${Math.round(count / total * 100)}%</span>`;
+          row.title = `${color.name} ${color.hex}`;
+          refs.usageList.appendChild(row);
+        });
+      }
+
+      function renderLegend(counts) {
+        refs.legend.querySelectorAll(".legend-item:not(#legendEmpty)").forEach(item => item.remove());
+        const empty = $("legendEmpty");
+        const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+        empty.classList.toggle("hidden", entries.length > 0);
+        entries.forEach(([id, count]) => {
+          const color = paletteMap.get(id);
+          const item = document.createElement("span");
+          item.className = "legend-item";
+          item.innerHTML = `<span class="legend-dot" style="background:${color.hex}"></span>${id} × ${count}`;
+          refs.legend.appendChild(item);
+        });
+      }
+
+      function renderPalette() {
+        refs.paletteGrid.innerHTML = "";
+        PALETTE.forEach(color => {
+          const button = document.createElement("button");
+          button.className = "swatch";
+          button.dataset.color = color.id;
+          button.style.setProperty("--swatch-color", color.hex);
+          button.title = `${color.name} / ${color.id} / ${color.hex}`;
+          button.setAttribute("aria-label", button.title);
+          button.addEventListener("click", () => {
+            state.currentColor = color.id;
+            state.tool = "brush";
+            updateToolButtons();
+            updatePaletteSelection();
+            updateInfo();
+          });
+          refs.paletteGrid.appendChild(button);
+        });
+        updatePaletteSelection();
+      }
+
+      function updatePaletteSelection() {
+        document.querySelectorAll(".swatch").forEach(button => button.classList.toggle("active", button.dataset.color === state.currentColor));
+      }
+
+      function updateToolButtons() {
+        document.querySelectorAll(".tool-btn").forEach(button => button.classList.toggle("active", button.dataset.tool === state.tool));
+      }
+
+      function renderAll() {
+        resizeCanvas();
+        drawPattern();
+        updateInfo();
+        updateHistoryButtons();
+        updatePaletteSelection();
+        refs.opacity.value = state.referenceOpacity;
+        refs.opacityValue.textContent = `${state.referenceOpacity}%`;
+        document.querySelector('[data-toggle="grid"]').classList.toggle("on", state.gridLines);
+        document.querySelector('[data-toggle="ruler"]').classList.toggle("on", state.ruler);
+        document.querySelector('[data-toggle="labels"]').classList.toggle("on", state.labels);
+        document.querySelector('[data-toggle="reference"]').classList.toggle("on", state.referenceVisible);
+        document.querySelectorAll('[data-mode]').forEach(button => button.classList.toggle("active", button.dataset.mode === state.mode));
+        document.querySelectorAll('[data-zoom]').forEach(button => button.classList.toggle("active", Number(button.dataset.zoom) === state.zoom));
+      }
+
+      function cellFromEvent(event) {
+        const rect = refs.pattern.getBoundingClientRect();
+        const x = Math.floor((event.clientX - rect.left) / (CELL * state.zoom));
+        const y = Math.floor((event.clientY - rect.top) / (CELL * state.zoom));
+        return { x, y };
+      }
+
+      function paintCell(cell) {
+        if (cell.x < 0 || cell.y < 0 || cell.x >= state.width || cell.y >= state.height) return false;
+        const value = state.tool === "eraser" ? null : state.currentColor;
+        if (state.tool === "picker") {
+          const picked = state.grid[cell.y][cell.x];
+          if (picked) {
+            state.currentColor = picked;
+            state.tool = "brush";
+            updateToolButtons();
+            updatePaletteSelection();
+            updateInfo();
+            showToast(`已取色 ${picked}`);
+          }
+          return false;
+        }
+        if (state.grid[cell.y][cell.x] === value) return false;
+        state.grid[cell.y][cell.x] = value;
+        return true;
+      }
+
+      function lineCells(a, b) {
+        const cells = [];
+        const dx = Math.abs(b.x - a.x), dy = Math.abs(b.y - a.y);
+        const sx = a.x < b.x ? 1 : -1, sy = a.y < b.y ? 1 : -1;
+        let err = dx - dy, x = a.x, y = a.y;
+        while (true) {
+          cells.push({ x, y });
+          if (x === b.x && y === b.y) break;
+          const e2 = err * 2;
+          if (e2 > -dy) { err -= dy; x += sx; }
+          if (e2 < dx) { err += dx; y += sy; }
+        }
+        return cells;
+      }
+
+      function applyPointer(event, isStart = false) {
+        if (event.pointerType === "mouse" && event.button !== 0 && isStart) return;
+        const cell = cellFromEvent(event);
+        if (state.tool === "picker") { paintCell(cell); return; }
+        let changed = false;
+        const cells = isStart || !state.lastCell ? [cell] : lineCells(state.lastCell, cell);
+        cells.forEach(item => { if (paintCell(item)) changed = true; });
+        state.lastCell = cell;
+        if (changed) { drawPattern(); updateInfo(); }
+      }
+
+      function applyTransform(type) {
+        const old = cloneGrid(state.grid);
+        if (type === "mirrorX") state.grid = old.map(row => row.slice().reverse());
+        if (type === "mirrorY") state.grid = old.slice().reverse();
+        if (type === "rotate") {
+          const next = Array.from({ length: state.width }, () => Array(state.height).fill(null));
+          for (let y = 0; y < state.height; y++) for (let x = 0; x < state.width; x++) next[x][state.height - 1 - y] = old[y][x];
+          const width = state.width;
+          state.width = state.height;
+          state.height = width;
+          state.grid = next;
+          refs.width.value = state.width;
+          refs.height.value = state.height;
+        }
+        pushHistory();
+        renderAll();
+        showToast(type === "rotate" ? "已旋转 90°，坐标标尺同步更新" : "图案变换已完成");
+      }
+
+      function undo() {
+        if (state.historyIndex <= 0) return;
+        state.historyIndex -= 1;
+        restoreSnapshot(state.history[state.historyIndex]);
+        setDirty(true);
+      }
+
+      function redo() {
+        if (state.historyIndex >= state.history.length - 1) return;
+        state.historyIndex += 1;
+        restoreSnapshot(state.history[state.historyIndex]);
+        setDirty(true);
+      }
+
+      function download(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url; anchor.download = filename; anchor.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+
+      function saveProject() {
+        const project = {
+          format: "neon-bead-studio", version: 1, savedAt: new Date().toISOString(),
+          width: state.width, height: state.height, grid: state.grid, currentColor: state.currentColor,
+          settings: { gridLines: state.gridLines, ruler: state.ruler, labels: state.labels, mode: state.mode, referenceOpacity: state.referenceOpacity }
+        };
+        download(new Blob([JSON.stringify(project, null, 2)], { type: "application/json" }), `neon-bead-${state.width}x${state.height}.json`);
+        setDirty(false); showToast("工程 JSON 已保存");
+      }
+
+      function loadProject(file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const project = JSON.parse(reader.result);
+            const width = Math.max(4, Math.min(100, Math.round(Number(project.width))));
+            const height = Math.max(4, Math.min(100, Math.round(Number(project.height))));
+            if (!Array.isArray(project.grid) || project.grid.length !== height) throw new Error("grid");
+            const grid = project.grid.map(row => Array.from({ length: width }, (_, x) => paletteMap.has(row?.[x]) ? row[x] : null));
+            state.width = width; state.height = height; state.grid = grid;
+            state.currentColor = paletteMap.has(project.currentColor) ? project.currentColor : "B01";
+            const settings = project.settings || {};
+            state.gridLines = settings.gridLines !== false; state.ruler = settings.ruler !== false; state.labels = settings.labels !== false;
+            state.mode = settings.mode === "bead" ? "bead" : "board"; state.referenceOpacity = Math.max(0, Math.min(100, Number(settings.referenceOpacity) || 42));
+            refs.width.value = width; refs.height.value = height;
+            state.history = []; state.historyIndex = -1; pushHistory(); setDirty(false); renderAll();
+            showToast("工程已读取");
+          } catch (error) { showToast("JSON 工程格式无效"); }
+        };
+        reader.readAsText(file);
+      }
+
+      function loadReference(file) {
+        if (!file || !file.type.startsWith("image/")) { showToast("请选择图片文件"); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const image = new Image();
+          image.onload = () => { state.referenceImage = image; state.referenceVisible = true; drawReference(); renderAll(); showToast("参考底图已载入"); };
+          image.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      }
+
+      function luminance(rgb) { return (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000; }
+      function colorDistance(a, b) { return Math.sqrt((a.r-b.r)**2 + (a.g-b.g)**2 + (a.b-b.b)**2); }
+      function nearestColor(rgb, candidates) {
+        let winner = candidates[0], best = Infinity;
+        candidates.forEach(color => { const distance = colorDistance(rgb, hexToRgb(color.hex)); if (distance < best) { best = distance; winner = color; } });
+        return winner.id;
+      }
+
+      function convertReference() {
+        if (!state.referenceImage) { showToast("请先载入参考底图"); return; }
+        const maxColors = Math.max(2, Math.min(32, Math.round(Number(refs.maxColors.value) || 12)));
+        refs.maxColors.value = maxColors;
+        const offscreen = document.createElement("canvas"); offscreen.width = state.width; offscreen.height = state.height;
+        const offCtx = offscreen.getContext("2d", { willReadFrequently: true });
+        const image = state.referenceImage;
+        const scale = Math.max(state.width / image.width, state.height / image.height);
+        const width = image.width * scale, height = image.height * scale;
+        offCtx.drawImage(image, (state.width-width)/2, (state.height-height)/2, width, height);
+        const data = offCtx.getImageData(0, 0, state.width, state.height).data;
+        const samples = [];
+        for (let y = 0; y < state.height; y++) for (let x = 0; x < state.width; x++) {
+          const i = (y * state.width + x) * 4;
+          const rgb = { r: data[i], g: data[i+1], b: data[i+2] };
+          if (luminance(rgb) > 248) continue;
+          samples.push({ rgb, x, y, score: 255 - luminance(rgb) });
+        }
+        if (!samples.length) { showToast("图片内容过亮，未生成图纸"); return; }
+        samples.sort((a,b) => b.score - a.score);
+        const candidates = PALETTE.slice().sort((a,b) => {
+          const ar = hexToRgb(a.hex), br = hexToRgb(b.hex);
+          return samples.slice(0, Math.min(2500, samples.length)).reduce((sum, s) => sum + colorDistance(s.rgb, br), 0) - samples.slice(0, Math.min(2500, samples.length)).reduce((sum, s) => sum + colorDistance(s.rgb, ar), 0);
+        }).slice(0, maxColors);
+        const next = Array.from({ length: state.height }, () => Array(state.width).fill(null));
+        for (let y = 0; y < state.height; y++) for (let x = 0; x < state.width; x++) {
+          const i = (y * state.width + x) * 4;
+          const rgb = { r: data[i], g: data[i+1], b: data[i+2] };
+          if (luminance(rgb) > 248) continue;
+          next[y][x] = nearestColor(rgb, candidates);
+        }
+        state.grid = next;
+        pushHistory(); renderAll(); showToast(`转换完成 / 使用 ${candidates.length} 种颜色`);
+      }
+
+      function exportPng() {
+        const scale = 3, rulerSize = state.ruler ? 42 : 0;
+        const output = document.createElement("canvas");
+        output.width = state.width * CELL * scale + rulerSize * scale;
+        output.height = state.height * CELL * scale + rulerSize * scale;
+        const out = output.getContext("2d");
+        out.fillStyle = "#fff"; out.fillRect(0, 0, output.width, output.height);
+        out.save(); out.translate(rulerSize * scale, rulerSize * scale); out.scale(scale, scale);
+        const temp = document.createElement("canvas"); temp.width = refs.pattern.width; temp.height = refs.pattern.height;
+        const tempCtx = temp.getContext("2d");
+        tempCtx.drawImage(refs.pattern, 0, 0);
+        out.drawImage(temp, 0, 0);
+        if (state.gridLines) {
+          out.strokeStyle = "rgba(37,42,48,.35)"; out.lineWidth = 1; out.beginPath();
+          for (let x = 0; x <= state.width; x++) { out.moveTo(x*CELL+.5, 0); out.lineTo(x*CELL+.5, state.height*CELL); }
+          for (let y = 0; y <= state.height; y++) { out.moveTo(0, y*CELL+.5); out.lineTo(state.width*CELL, y*CELL+.5); }
+          out.stroke();
+        }
+        out.restore();
+        if (state.ruler) {
+          out.save(); out.scale(scale, scale); out.fillStyle = "#343a42"; out.font = "10px Menlo, monospace"; out.textAlign = "center"; out.textBaseline = "middle";
+          for (let x = 0; x < state.width; x++) out.fillText(String(x+1), rulerSize + x*CELL + CELL/2, rulerSize/2);
+          out.textAlign = "right";
+          for (let y = 0; y < state.height; y++) out.fillText(String(y+1), rulerSize - 6, rulerSize + y*CELL + CELL/2);
+          out.restore();
+        }
+        output.toBlob(blob => download(blob, `neon-bead-${state.width}x${state.height}.png`), "image/png");
+        showToast("白底 PNG 已导出");
+      }
+
+      function bindEvents() {
+        $("newBtn").addEventListener("click", () => { if (state.isDirty && !confirm("当前有未保存修改，仍要新建空白图纸吗？")) return; setDimensions(state.width, state.height); setDirty(false); showToast("已新建空白图纸"); });
+        $("clearBtn").addEventListener("click", () => { if (!countFilled()) return; state.grid = blank(); pushHistory(); renderAll(); showToast("图纸已清空"); });
+        $("undoBtn").addEventListener("click", undo); $("redoBtn").addEventListener("click", redo);
+        $("saveJsonBtn").addEventListener("click", saveProject); $("openJsonBtn").addEventListener("click", () => refs.jsonInput.click());
+        refs.jsonInput.addEventListener("change", event => { if (event.target.files[0]) loadProject(event.target.files[0]); event.target.value = ""; });
+        $("printBtn").addEventListener("click", () => window.print()); $("exportBtn").addEventListener("click", exportPng);
+        $("fitBtn").addEventListener("click", () => { state.zoom = 1; renderAll(); refs.stage.scrollTo({ top: 0, left: 0, behavior: "smooth" }); showToast("已适合窗口显示"); });
+        $("randomColorBtn").addEventListener("click", () => { state.currentColor = PALETTE[Math.floor(Math.random() * PALETTE.length)].id; updatePaletteSelection(); updateInfo(); });
+        const clampNumberInput = (input, min, max) => {
+          input.addEventListener("input", () => {
+            const value = Number(input.value);
+            if (Number.isFinite(value)) input.value = Math.max(min, Math.min(max, Math.round(value)));
+          });
+        };
+        clampNumberInput(refs.width, 4, 100);
+        clampNumberInput(refs.height, 4, 100);
+        clampNumberInput(refs.maxColors, 2, 32);
+        refs.width.addEventListener("change", () => { if (Number(refs.width.value) !== state.width || state.width !== state.height) setDimensions(refs.width.value, refs.height.value); });
+        refs.height.addEventListener("change", () => { if (Number(refs.height.value) !== state.height || state.width !== state.height) setDimensions(refs.width.value, refs.height.value); });
+        document.querySelectorAll(".preset-btn").forEach(button => button.addEventListener("click", () => setDimensions(button.dataset.size, button.dataset.size)));
+        document.querySelectorAll("[data-toggle]").forEach(button => button.addEventListener("click", () => {
+          const key = button.dataset.toggle === "grid" ? "gridLines" : button.dataset.toggle === "reference" ? "referenceVisible" : button.dataset.toggle;
+          state[key] = !state[key]; renderAll();
+        }));
+        document.querySelectorAll("[data-mode]").forEach(button => button.addEventListener("click", () => { state.mode = button.dataset.mode; renderAll(); }));
+        document.querySelectorAll("[data-zoom]").forEach(button => button.addEventListener("click", () => { state.zoom = Number(button.dataset.zoom); renderAll(); }));
+        document.querySelectorAll("[data-tool]").forEach(button => button.addEventListener("click", () => { state.tool = button.dataset.tool; updateToolButtons(); }));
+        document.querySelectorAll("[data-transform]").forEach(button => button.addEventListener("click", () => applyTransform(button.dataset.transform)));
+        refs.opacity.addEventListener("input", () => { state.referenceOpacity = Number(refs.opacity.value); refs.opacityValue.textContent = `${state.referenceOpacity}%`; drawReference(); });
+        $("removeReferenceBtn").addEventListener("click", () => { state.referenceImage = null; drawReference(); showToast("参考底图已移除"); });
+        refs.referenceInput.addEventListener("change", event => { if (event.target.files[0]) loadReference(event.target.files[0]); event.target.value = ""; });
+        refs.fileDrop.addEventListener("dragover", event => { event.preventDefault(); refs.fileDrop.classList.add("dragover"); });
+        refs.fileDrop.addEventListener("dragleave", () => refs.fileDrop.classList.remove("dragover"));
+        refs.fileDrop.addEventListener("drop", event => { event.preventDefault(); refs.fileDrop.classList.remove("dragover"); loadReference(event.dataTransfer.files[0]); });
+        $("convertBtn").addEventListener("click", convertReference);
+        refs.pattern.addEventListener("pointerdown", event => { event.preventDefault(); refs.pattern.setPointerCapture(event.pointerId); state.pointerDown = true; state.lastCell = null; applyPointer(event, true); });
+        refs.pattern.addEventListener("pointermove", event => { const cell = cellFromEvent(event); if (cell.x >= 0 && cell.y >= 0 && cell.x < state.width && cell.y < state.height) refs.cursor.textContent = `${String(cell.x+1).padStart(2,"0")} , ${String(cell.y+1).padStart(2,"0")}`; else refs.cursor.textContent = "-- , --"; if (state.pointerDown) applyPointer(event); });
+        refs.pattern.addEventListener("pointerup", event => { if (!state.pointerDown) return; state.pointerDown = false; state.lastCell = null; refs.pattern.releasePointerCapture?.(event.pointerId); if (state.tool !== "picker") pushHistory(); });
+        refs.pattern.addEventListener("pointercancel", () => { state.pointerDown = false; state.lastCell = null; });
+        refs.pattern.addEventListener("pointerleave", () => { if (!state.pointerDown) refs.cursor.textContent = "-- , --"; });
+        window.addEventListener("keydown", event => {
+          const meta = event.ctrlKey || event.metaKey;
+          if (!meta) return;
+          if (event.key.toLowerCase() === "z") { event.preventDefault(); event.shiftKey ? redo() : undo(); }
+          if (event.key.toLowerCase() === "y") { event.preventDefault(); redo(); }
+          if (event.key.toLowerCase() === "s") { event.preventDefault(); saveProject(); }
+        });
+      }
+
+      renderPalette(); bindEvents(); renderAll(); state.history = [snapshot()]; state.historyIndex = 0; updateHistoryButtons(); setDirty(false);
+    })();
+  </script>
+</body>
+</html>
