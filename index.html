@@ -265,7 +265,8 @@
     @media (max-width: 680px) {
       html, body { width: 100%; overflow-x: hidden; }
       body { min-width: 0; }
-      .app-shell { width: 100%; min-width: 0; min-height: 100svh; height: auto; }
+      .app-shell { width: 100%; min-width: 0; min-height: 100svh; height: auto; overflow-x: hidden; }
+      .topbar, .workspace, .canvas-panel { width: 100%; min-width: 0; }
       .topbar { align-items: stretch; gap: 9px; padding: 10px max(10px, env(safe-area-inset-right)) 9px max(10px, env(safe-area-inset-left)); }
       .brand { width: 100%; min-width: 0; flex: 0 0 auto; gap: 8px; padding: 0; border-right: 0; }
       .brand-mark { width: 32px; height: 32px; flex: none; font-size: 16px; }
@@ -284,7 +285,7 @@
       .canvas-panel { width: 100%; height: min(72svh, 680px); min-height: 480px; max-height: 680px; }
       .canvas-toolbar { min-width: 0; overflow-x: auto; gap: 6px; padding: 0 10px; scrollbar-width: thin; white-space: nowrap; }
       .canvas-toolbar .toolbar-label, .canvas-toolbar .segmented, .canvas-toolbar .icon-btn { flex: 0 0 auto; }
-      .canvas-stage { min-height: 0; padding: 42px 24px 52px 48px; display: block; overflow: auto; overscroll-behavior: contain; }
+      .canvas-stage { width: 100%; min-width: 0; min-height: 0; padding: 42px 24px 52px 48px; display: block; overflow: auto; overscroll-behavior: contain; }
       .canvas-workspace { margin: 0 auto; }
       .canvas-meta { left: 10px; bottom: 9px; font-size: 9px; }
       .legend { min-height: 44px; padding: 8px 10px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
