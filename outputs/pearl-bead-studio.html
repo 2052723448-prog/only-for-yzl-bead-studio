@@ -196,7 +196,7 @@
     .canvas-stack { position: relative; background: #fff; box-shadow: 0 16px 48px rgba(0,0,0,.58), 0 0 0 1px #555b63; }
     .canvas-stack canvas { display: block; image-rendering: pixelated; }
     #referenceCanvas, #patternCanvas { position: absolute; inset: 0; }
-    #patternCanvas { cursor: crosshair; }
+    #patternCanvas { cursor: crosshair; touch-action: none; }
     .canvas-meta { position: absolute; left: 10px; bottom: 9px; display: flex; gap: 8px; align-items: center; color: var(--muted-2); font: 10px var(--font); pointer-events: none; }
     .canvas-meta strong { color: var(--orange-hot); font-weight: 500; }
     .empty-overlay { position: absolute; inset: 0; pointer-events: none; display: grid; place-items: center; color: rgba(45, 50, 56, .34); font: 11px var(--font); }
@@ -260,6 +260,48 @@
       .panel-left .panel-scroll, .panel-right .panel-scroll { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
       .panel-left .section, .panel-right .section { min-width: 0; margin-bottom: 0; }
       .panel-left .section:last-child, .panel-right .section:last-child { grid-column: 1 / -1; }
+    }
+
+    @media (max-width: 680px) {
+      html, body { width: 100%; overflow-x: hidden; }
+      body { min-width: 0; }
+      .app-shell { width: 100%; min-width: 0; min-height: 100svh; height: auto; }
+      .topbar { align-items: stretch; gap: 9px; padding: 10px max(10px, env(safe-area-inset-right)) 9px max(10px, env(safe-area-inset-left)); }
+      .brand { width: 100%; min-width: 0; flex: 0 0 auto; gap: 8px; padding: 0; border-right: 0; }
+      .brand-mark { width: 32px; height: 32px; flex: none; font-size: 16px; }
+      .brand-title { max-width: calc(100vw - 72px); overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+      .brand-subtitle { max-width: calc(100vw - 72px); overflow: hidden; text-overflow: ellipsis; font-size: 8px; }
+      .topbar-actions { width: 100%; min-width: 0; flex: 0 0 100%; gap: 6px; padding-bottom: 3px; scrollbar-width: thin; }
+      .topbar-actions .btn { flex: 0 0 auto; height: 38px; min-height: 38px; padding: 0 10px; }
+      .topbar-actions .history-actions, .topbar-actions .project-status { flex: 0 0 auto; }
+      .workspace { width: 100%; min-width: 0; }
+      .panel { width: 100%; max-height: none; }
+      .panel-scroll { padding: 12px 12px 22px; overflow: visible; }
+      .panel-left .panel-scroll, .panel-right .panel-scroll { display: block; }
+      .panel-left .section, .panel-right .section { width: 100%; margin-bottom: 15px; }
+      .panel-left .section:last-child, .panel-right .section:last-child { grid-column: auto; }
+      .panel-heading { min-height: 42px; padding: 0 12px; }
+      .canvas-panel { width: 100%; height: min(72svh, 680px); min-height: 480px; max-height: 680px; }
+      .canvas-toolbar { min-width: 0; overflow-x: auto; gap: 6px; padding: 0 10px; scrollbar-width: thin; white-space: nowrap; }
+      .canvas-toolbar .toolbar-label, .canvas-toolbar .segmented, .canvas-toolbar .icon-btn { flex: 0 0 auto; }
+      .canvas-stage { min-height: 0; padding: 42px 24px 52px 48px; display: block; overflow: auto; overscroll-behavior: contain; }
+      .canvas-workspace { margin: 0 auto; }
+      .canvas-meta { left: 10px; bottom: 9px; font-size: 9px; }
+      .legend { min-height: 44px; padding: 8px 10px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
+      .legend-item { flex: 0 0 auto; }
+      .tool-btn { min-height: 64px; }
+      .transform-grid .btn { min-height: 40px; height: auto; padding: 6px 4px; line-height: 1.25; white-space: normal; }
+      .file-drop { min-height: 92px; }
+      .footerbar { gap: 8px; padding: 0 10px; font-size: 8px; }
+      .footerbar span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .footerbar span:last-child { flex: none; }
+    }
+
+    @media (max-width: 380px) {
+      .topbar-actions .btn { padding: 0 8px; font-size: 11px; }
+      .brand-title { font-size: 11px; }
+      .panel-scroll { padding-inline: 10px; }
+      .palette-grid, .tool-grid, .transform-grid { gap: 4px; }
     }
 
     @media print {
@@ -362,7 +404,7 @@
         <div class="canvas-toolbar">
           <span class="toolbar-label">PREVIEW / <strong id="toolbarDimension">60×60</strong></span>
           <div class="spacer"></div>
-          <div class="segmented"><button class="segment active" data-zoom="1">100%</button><button class="segment" data-zoom="1.5">150%</button><button class="segment" data-zoom="2">200%</button></div>
+          <div class="segmented"><button class="segment" data-zoom="0.5">50%</button><button class="segment active" data-zoom="1">100%</button><button class="segment" data-zoom="1.5">150%</button><button class="segment" data-zoom="2">200%</button></div>
           <button class="icon-btn" id="fitBtn" title="适合窗口"><svg class="icon" viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M21 16v5h-5"/><path d="M3 3l6 6M21 3l-6 6M3 21l6-6M21 21l-6-6"/></svg></button>
           <button class="icon-btn" id="exportBtn" title="导出白底 PNG"><svg class="icon" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 20h16"/></svg></button>
         </div>
@@ -542,6 +584,18 @@
         refs.rulerY.style.height = `${height * state.zoom}px`;
         drawRulers();
         drawReference();
+      }
+
+      function fitCanvasToStage() {
+        const style = getComputedStyle(refs.stage);
+        const horizontalPadding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight) + (state.ruler ? 40 : 0);
+        const verticalPadding = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) + (state.ruler ? 28 : 0);
+        const availableWidth = Math.max(120, refs.stage.clientWidth - horizontalPadding);
+        const availableHeight = Math.max(120, refs.stage.clientHeight - verticalPadding);
+        const fit = Math.min(1, availableWidth / (state.width * CELL), availableHeight / (state.height * CELL));
+        state.zoom = Math.max(.2, Math.floor(fit * 20) / 20);
+        renderAll();
+        refs.stage.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       }
 
       function drawRulers() {
@@ -964,7 +1018,7 @@
         $("saveJsonBtn").addEventListener("click", saveProject); $("openJsonBtn").addEventListener("click", () => refs.jsonInput.click());
         refs.jsonInput.addEventListener("change", event => { if (event.target.files[0]) loadProject(event.target.files[0]); event.target.value = ""; });
         $("printBtn").addEventListener("click", () => window.print()); $("exportBtn").addEventListener("click", exportPng);
-        $("fitBtn").addEventListener("click", () => { state.zoom = 1; renderAll(); refs.stage.scrollTo({ top: 0, left: 0, behavior: "smooth" }); showToast("已适合窗口显示"); });
+        $("fitBtn").addEventListener("click", () => { fitCanvasToStage(); showToast(`已适合窗口 / ${Math.round(state.zoom * 100)}%`); });
         $("randomColorBtn").addEventListener("click", () => { state.currentColor = PALETTE[Math.floor(Math.random() * PALETTE.length)].id; updatePaletteSelection(); updateInfo(); });
         const clampNumberInput = (input, min, max) => {
           input.addEventListener("input", () => {
@@ -1008,6 +1062,7 @@
       }
 
       renderPalette(); bindEvents(); renderAll(); state.history = [snapshot()]; state.historyIndex = 0; updateHistoryButtons(); setDirty(false);
+      if (window.matchMedia("(max-width: 680px)").matches) requestAnimationFrame(fitCanvasToStage);
     })();
   </script>
 </body>
